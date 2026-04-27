@@ -311,10 +311,6 @@ def force_ltr_paragraph(paragraph):
     for bidi in pPr.xpath("./w:bidi", namespaces=NSMAP):
         pPr.remove(bidi)
 
-    jc = pPr.find("w:jc", namespaces=NSMAP)
-    if jc is None:
-        jc = etree.SubElement(pPr, f"{{{W_NS}}}jc")
-    jc.set(f"{{{W_NS}}}val", "left")
 
     # Force all runs to LTR
     for run in paragraph.xpath(".//w:r", namespaces=NSMAP):

@@ -154,19 +154,36 @@ class DeepLTextTranslator:
                 "Content-Type": "application/json",
             }
 
-            response = requests.post(
-                f"{self.base_url}/v2/translate",
-                headers=headers,
-                json=payload,
-                timeout=60,
-            )
+            last_error = None
 
-            response.raise_for_status()
-            data = response.json()
+            for attempt in range(3):
+                try:
+                    response = requests.post(
+                        f"{self.base_url}/v2/translate",
+                        headers=headers,
+                        json=payload,
+                        timeout=180,
+                    )
 
-            translated = data["translations"][0]["text"]
-            self.cache[item] = translated
-            translated_results.append(translated)
+                    response.raise_for_status()
+                    data = response.json()
+
+                    translated = data["translations"][0]["text"]
+                    self.cache[item] = translated
+                    translated_results.append(translated)
+                    break
+
+                except requests.exceptions.Timeout as error:
+                    last_error = error
+                    print(f"Timeout. Retrying {attempt + 1}/3...")
+
+                except requests.exceptions.RequestException as error:
+                    last_error = error
+                    print(f"Request failed. Retrying {attempt + 1}/3...")
+
+            else:
+                raise RuntimeError(f"DeepL request failed after 3 retries: {last_error}")
+
 
         return translated_results
 

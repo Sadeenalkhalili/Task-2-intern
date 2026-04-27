@@ -1,6 +1,5 @@
 import os
 import re
-import shutil
 import zipfile
 import tempfile
 import argparse
@@ -65,15 +64,6 @@ def get_word_xml_files(work_dir: str) -> list[Path]:
 
 
 def paragraph_to_deepl_xml(paragraph, paragraph_id: int) -> tuple[str, list]:
-    """
-    Convert one Word paragraph into small XML for DeepL.
-
-    Each <w:t> text node becomes:
-    <r id="0">Arabic text</r>
-
-    DeepL translates the text but keeps the <r id=""> tags.
-    Then we put each translated result back into the original <w:t>.
-    """
     text_nodes = paragraph.xpath(".//w:t", namespaces=NSMAP)
 
     parts = [f'<p id="{paragraph_id}">']
@@ -96,9 +86,6 @@ def paragraph_to_deepl_xml(paragraph, paragraph_id: int) -> tuple[str, list]:
 
 
 def parse_translated_deepl_xml(translated_xml: str) -> dict[int, str]:
-    """
-    Read DeepL's returned XML and extract translated text by run id.
-    """
     root = etree.fromstring(translated_xml.encode("utf-8"))
     result = {}
 
@@ -125,9 +112,6 @@ class DeepLTextTranslator:
         self.cache = {}
 
     def translate_xml_batch(self, xml_items: list[str]) -> list[str]:
-        """
-        Translate a batch of XML fragments using DeepL text API.
-        """
         if not xml_items:
             return []
 
@@ -324,12 +308,9 @@ def force_ltr_paragraph(paragraph):
         pPr = etree.Element(f"{{{W_NS}}}pPr")
         paragraph.insert(0, pPr)
 
-    # Remove paragraph RTL/bidi
     for bidi in pPr.xpath("./w:bidi", namespaces=NSMAP):
         pPr.remove(bidi)
 
-
-    # Force all runs to LTR
     for run in paragraph.xpath(".//w:r", namespaces=NSMAP):
         rPr = run.find("w:rPr", namespaces=NSMAP)
         if rPr is None:

@@ -1,260 +1,297 @@
 import os
-import time
+import re
+import shutil
+import zipfile
+import tempfile
 import argparse
+from pathlib import Path
+from html import escape
+
 import requests
+from lxml import etree
+
+
+ARABIC_RE = re.compile(r"[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]")
+
+W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+NSMAP = {"w": W_NS}
+
+
+def has_arabic(text: str) -> bool:
+    return bool(text) and bool(ARABIC_RE.search(text))
 
 
 def get_api_key() -> str:
-    api_key = os.environ.get("DEEPL_API_KEY")
-    if not api_key:
-        raise RuntimeError(
-            "DEEPL_API_KEY is not set. "
-            "Set it in your environment before running the script."
-        )
-    return api_key
+    key = os.environ.get("DEEPL_API_KEY")
+    if not key:
+        raise RuntimeError("DEEPL_API_KEY is not set.")
+    return key
 
 
 def get_base_url(use_free_api: bool) -> str:
-    if use_free_api:
-        return "https://api-free.deepl.com"
-    return "https://api.deepl.com"
+    return "https://api-free.deepl.com" if use_free_api else "https://api.deepl.com"
 
 
-def upload_document(
-    input_path: str,
-    target_lang: str,
-    api_key: str,
-    base_url: str,
-    source_lang: str | None = None,
-) -> tuple[str, str]:
-    upload_url = f"{base_url}/v2/document"
+def unzip_docx(input_path: str, work_dir: str) -> None:
+    with zipfile.ZipFile(input_path, "r") as zip_ref:
+        zip_ref.extractall(work_dir)
 
-    with open(input_path, "rb") as file_obj:
-        files = {
-            "file": (
-                os.path.basename(input_path),
-                file_obj,
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+
+def zip_docx(work_dir: str, output_path: str) -> None:
+    with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as docx_zip:
+        for file_path in Path(work_dir).rglob("*"):
+            if file_path.is_file():
+                relative_path = file_path.relative_to(work_dir)
+                docx_zip.write(file_path, relative_path.as_posix())
+
+
+def get_word_xml_files(work_dir: str) -> list[Path]:
+    word_dir = Path(work_dir) / "word"
+
+    wanted_patterns = [
+        "document.xml",
+        "header*.xml",
+        "footer*.xml",
+        "footnotes.xml",
+        "endnotes.xml",
+        "comments.xml",
+    ]
+
+    files = []
+    for pattern in wanted_patterns:
+        files.extend(word_dir.glob(pattern))
+
+    return files
+
+
+def paragraph_to_deepl_xml(paragraph, paragraph_id: int) -> tuple[str, list]:
+    """
+    Convert one Word paragraph into small XML for DeepL.
+
+    Each <w:t> text node becomes:
+    <r id="0">Arabic text</r>
+
+    DeepL translates the text but keeps the <r id=""> tags.
+    Then we put each translated result back into the original <w:t>.
+    """
+    text_nodes = paragraph.xpath(".//w:t", namespaces=NSMAP)
+
+    parts = [f'<p id="{paragraph_id}">']
+    used_nodes = []
+
+    run_id = 0
+    for node in text_nodes:
+        original_text = node.text or ""
+
+        if original_text == "":
+            continue
+
+        used_nodes.append(node)
+        parts.append(f'<r id="{run_id}">{escape(original_text)}</r>')
+        run_id += 1
+
+    parts.append("</p>")
+
+    return "".join(parts), used_nodes
+
+
+def parse_translated_deepl_xml(translated_xml: str) -> dict[int, str]:
+    """
+    Read DeepL's returned XML and extract translated text by run id.
+    """
+    root = etree.fromstring(translated_xml.encode("utf-8"))
+    result = {}
+
+    for r in root.xpath(".//r"):
+        run_id = int(r.get("id"))
+        translated_text = "".join(r.itertext())
+        result[run_id] = translated_text
+
+    return result
+
+
+class DeepLTextTranslator:
+    def __init__(
+        self,
+        api_key: str,
+        base_url: str,
+        target_lang: str = "EN",
+        source_lang: str | None = "AR",
+    ):
+        self.api_key = api_key
+        self.base_url = base_url
+        self.target_lang = target_lang
+        self.source_lang = source_lang
+        self.cache = {}
+
+    def translate_xml_batch(self, xml_items: list[str]) -> list[str]:
+        """
+        Translate a batch of XML fragments using DeepL text API.
+        """
+        if not xml_items:
+            return []
+
+        translated_results = []
+
+        for item in xml_items:
+            if item in self.cache:
+                translated_results.append(self.cache[item])
+                continue
+
+            payload = {
+                "text": [item],
+                "target_lang": self.target_lang,
+                "tag_handling": "xml",
+                "tag_handling_version": "v2",
+                "preserve_formatting": True,
+            }
+
+            if self.source_lang:
+                payload["source_lang"] = self.source_lang
+
+            headers = {
+                "Authorization": f"DeepL-Auth-Key {self.api_key}",
+                "Content-Type": "application/json",
+            }
+
+            response = requests.post(
+                f"{self.base_url}/v2/translate",
+                headers=headers,
+                json=payload,
+                timeout=60,
             )
-        }
 
-        data = {
-            "target_lang": target_lang,
-        }
+            response.raise_for_status()
+            data = response.json()
 
-        if source_lang:
-            data["source_lang"] = source_lang
+            translated = data["translations"][0]["text"]
+            self.cache[item] = translated
+            translated_results.append(translated)
 
-        headers = {
-            "Authorization": f"DeepL-Auth-Key {api_key}",
-        }
-
-        response = requests.post(
-            upload_url,
-            headers=headers,
-            data=data,
-            files=files,
-            timeout=120,
-        )
-        response.raise_for_status()
-
-        result = response.json()
-        return result["document_id"], result["document_key"]
+        return translated_results
 
 
-def check_status(
-    document_id: str,
-    document_key: str,
-    api_key: str,
-    base_url: str,
-) -> dict:
-    status_url = f"{base_url}/v2/document/{document_id}"
+def translate_xml_file(xml_path: Path, translator: DeepLTextTranslator) -> int:
+    parser = etree.XMLParser(remove_blank_text=False, recover=True)
+    tree = etree.parse(str(xml_path), parser)
+    root = tree.getroot()
 
-    headers = {
-        "Authorization": f"DeepL-Auth-Key {api_key}",
-    }
+    paragraphs = root.xpath(".//w:p", namespaces=NSMAP)
 
-    data = {
-        "document_key": document_key,
-    }
+    items_to_translate = []
+    nodes_for_items = []
 
-    response = requests.post(
-        status_url,
-        headers=headers,
-        data=data,
-        timeout=60,
+    paragraph_counter = 0
+
+    for paragraph in paragraphs:
+        full_text = "".join(paragraph.xpath(".//w:t/text()", namespaces=NSMAP))
+
+        if not has_arabic(full_text):
+            continue
+
+        deepl_xml, text_nodes = paragraph_to_deepl_xml(paragraph, paragraph_counter)
+
+        if not text_nodes:
+            continue
+
+        items_to_translate.append(deepl_xml)
+        nodes_for_items.append(text_nodes)
+        paragraph_counter += 1
+
+    translated_items = translator.translate_xml_batch(items_to_translate)
+
+    changed_count = 0
+
+    for translated_xml, original_nodes in zip(translated_items, nodes_for_items):
+        try:
+            translated_by_id = parse_translated_deepl_xml(translated_xml)
+
+            for idx, node in enumerate(original_nodes):
+                node.text = translated_by_id.get(idx, "")
+
+            changed_count += 1
+
+        except Exception as error:
+            print(f"Warning: Could not parse translated XML in {xml_path.name}: {error}")
+
+    tree.write(
+        str(xml_path),
+        xml_declaration=True,
+        encoding="UTF-8",
+        standalone=None,
     )
-    response.raise_for_status()
-    return response.json()
+
+    return changed_count
 
 
-def wait_until_done(
-    document_id: str,
-    document_key: str,
-    api_key: str,
-    base_url: str,
-    poll_interval: int = 5,
-) -> None:
-    while True:
-        result = check_status(document_id, document_key, api_key, base_url)
-        status = result.get("status", "")
-
-        print(f"Status: {status}")
-
-        if status == "done":
-            return
-
-        if status == "error":
-            message = result.get("message", "Unknown error")
-            raise RuntimeError(f"Translation failed: {message}")
-
-        seconds_remaining = result.get("seconds_remaining")
-        if isinstance(seconds_remaining, int) and seconds_remaining > 0:
-            time.sleep(min(seconds_remaining, poll_interval))
-        else:
-            time.sleep(poll_interval)
-
-
-def download_document(
-    document_id: str,
-    document_key: str,
+def translate_docx_xml(
+    input_path: str,
     output_path: str,
-    api_key: str,
-    base_url: str,
+    target_lang: str = "EN",
+    source_lang: str | None = "AR",
+    use_free_api: bool = True,
 ) -> None:
-    download_url = f"{base_url}/v2/document/{document_id}/result"
+    if not input_path.lower().endswith(".docx"):
+        raise ValueError("Input file must be .docx")
 
-    headers = {
-        "Authorization": f"DeepL-Auth-Key {api_key}",
-    }
-
-    data = {
-        "document_key": document_key,
-    }
-
-    response = requests.post(
-        download_url,
-        headers=headers,
-        data=data,
-        timeout=120,
-    )
-    response.raise_for_status()
-
-    with open(output_path, "wb") as file_obj:
-        file_obj.write(response.content)
-
-
-def validate_input_file(input_path: str) -> None:
     if not os.path.exists(input_path):
         raise FileNotFoundError(f"Input file not found: {input_path}")
-
-    if not input_path.lower().endswith(".docx"):
-        raise ValueError("Input file must be a .docx file")
-
-
-def translate_docx(
-    input_path: str,
-    output_path: str,
-    target_lang: str,
-    use_free_api: bool,
-    source_lang: str | None = None,
-) -> None:
-    validate_input_file(input_path)
 
     api_key = get_api_key()
     base_url = get_base_url(use_free_api)
 
-    print("Uploading document...")
-    document_id, document_key = upload_document(
-        input_path=input_path,
-        target_lang=target_lang,
+    translator = DeepLTextTranslator(
         api_key=api_key,
         base_url=base_url,
+        target_lang=target_lang,
         source_lang=source_lang,
     )
 
-    print("Waiting for translation to finish...")
-    wait_until_done(
-        document_id=document_id,
-        document_key=document_key,
-        api_key=api_key,
-        base_url=base_url,
-    )
+    with tempfile.TemporaryDirectory() as work_dir:
+        print("Unzipping DOCX...")
+        unzip_docx(input_path, work_dir)
 
-    print("Downloading translated document...")
-    download_document(
-        document_id=document_id,
-        document_key=document_key,
-        output_path=output_path,
-        api_key=api_key,
-        base_url=base_url,
-    )
+        xml_files = get_word_xml_files(work_dir)
+        print(f"Found {len(xml_files)} Word XML files.")
 
-    print(f"Done. Saved translated file to: {output_path}")
+        total_changed = 0
 
+        for xml_file in xml_files:
+            print(f"Processing: {xml_file.name}")
+            changed = translate_xml_file(xml_file, translator)
+            total_changed += changed
 
-def build_output_name(input_path: str, target_lang: str) -> str:
-    base, ext = os.path.splitext(input_path)
-    return f"{base}_{target_lang.lower()}{ext}"
+        print("Rebuilding DOCX...")
+        zip_docx(work_dir, output_path)
+
+    print(f"Done. Translated {total_changed} paragraphs.")
+    print(f"Saved to: {output_path}")
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args():
     parser = argparse.ArgumentParser(
-        description="Translate a DOCX file using the DeepL document translation API."
+        description="Translate Arabic DOCX to English while preserving DOCX XML structure."
     )
 
-    parser.add_argument(
-        "--input",
-        required=True,
-        help="Path to the input .docx file",
-    )
-
-    parser.add_argument(
-        "--output",
-        required=False,
-        help="Path to save the translated .docx file",
-    )
-
-    parser.add_argument(
-        "--target-lang",
-        default="EN",
-        help="Target language code, default is EN",
-    )
-
-    parser.add_argument(
-        "--source-lang",
-        default=None,
-        help="Optional source language code, for example AR",
-    )
-
-    parser.add_argument(
-        "--pro",
-        action="store_true",
-        help="Use DeepL Pro API endpoint instead of Free API endpoint",
-    )
+    parser.add_argument("--input", required=True, help="Input .docx file")
+    parser.add_argument("--output", required=True, help="Output .docx file")
+    parser.add_argument("--target-lang", default="EN", help="Target language, default EN")
+    parser.add_argument("--source-lang", default="AR", help="Source language, default AR")
+    parser.add_argument("--pro", action="store_true", help="Use DeepL Pro instead of Free")
 
     return parser.parse_args()
 
 
-def main() -> None:
+def main():
     args = parse_args()
 
-    input_path = args.input
-    output_path = args.output or build_output_name(input_path, args.target_lang)
-    target_lang = args.target_lang.upper()
-    source_lang = args.source_lang.upper() if args.source_lang else None
-    use_free_api = not args.pro
-
-    try:
-        translate_docx(
-            input_path=input_path,
-            output_path=output_path,
-            target_lang=target_lang,
-            use_free_api=use_free_api,
-            source_lang=source_lang,
-        )
-    except Exception as error:
-        print(f"Error: {error}")
+    translate_docx_xml(
+        input_path=args.input,
+        output_path=args.output,
+        target_lang=args.target_lang.upper(),
+        source_lang=args.source_lang.upper() if args.source_lang else None,
+        use_free_api=not args.pro,
+    )
 
 
 if __name__ == "__main__":

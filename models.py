@@ -175,6 +175,7 @@ def translate_xml_file(xml_path: Path, translator: DeepLTextTranslator) -> int:
     parser = etree.XMLParser(remove_blank_text=False, recover=True)
     tree = etree.parse(str(xml_path), parser)
     root = tree.getroot()
+    remove_manual_page_breaks(root)
 
     paragraphs = root.xpath(".//w:p", namespaces=NSMAP)
 
@@ -207,7 +208,9 @@ def translate_xml_file(xml_path: Path, translator: DeepLTextTranslator) -> int:
             translated_by_id = parse_translated_deepl_xml(translated_xml)
 
             for idx, node in enumerate(original_nodes):
-                node.text = translated_by_id.get(idx, "")
+                node.text = clean_translation_text(translated_by_id.get(idx, ""))
+
+            force_ltr_paragraph(node.getparent().getparent())
 
             changed_count += 1
 
@@ -223,7 +226,24 @@ def translate_xml_file(xml_path: Path, translator: DeepLTextTranslator) -> int:
 
     return changed_count
 
+def clean_translation_text(text: str) -> str:
+    if not text:
+        return text
 
+    text = text.replace("“", '"').replace("”", '"')
+    text = text.replace("‘", "'").replace("’", "'")
+
+    # Remove quotes around short translated terms
+    text = re.sub(r'"([^"]{1,40})"', r"\1", text)
+
+    return text
+
+def remove_manual_page_breaks(root):
+    for br in root.xpath(".//w:br[@w:type='page']", namespaces=NSMAP):
+        parent = br.getparent()
+        if parent is not None:
+            parent.remove(br)
+            
 def translate_docx_xml(
     input_path: str,
     output_path: str,
@@ -281,7 +301,31 @@ def parse_args():
 
     return parser.parse_args()
 
+def force_ltr_paragraph(paragraph):
+    pPr = paragraph.find("w:pPr", namespaces=NSMAP)
+    if pPr is None:
+        pPr = etree.Element(f"{{{W_NS}}}pPr")
+        paragraph.insert(0, pPr)
 
+    # Remove paragraph RTL/bidi
+    for bidi in pPr.xpath("./w:bidi", namespaces=NSMAP):
+        pPr.remove(bidi)
+
+    jc = pPr.find("w:jc", namespaces=NSMAP)
+    if jc is None:
+        jc = etree.SubElement(pPr, f"{{{W_NS}}}jc")
+    jc.set(f"{{{W_NS}}}val", "left")
+
+    # Force all runs to LTR
+    for run in paragraph.xpath(".//w:r", namespaces=NSMAP):
+        rPr = run.find("w:rPr", namespaces=NSMAP)
+        if rPr is None:
+            rPr = etree.Element(f"{{{W_NS}}}rPr")
+            run.insert(0, rPr)
+
+        for rtl in rPr.xpath("./w:rtl", namespaces=NSMAP):
+            rPr.remove(rtl)
+            
 def main():
     args = parse_args()
 

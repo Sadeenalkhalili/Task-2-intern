@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>DOCX Translator</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="page">
+
+    <section id="mainScreen" class="panel">
+      <h1 class="title">Docx translator</h1>
+      <p class="subtitle">AR to EN</p>
+
+      <div class="actions">
+        <label class="upload-btn">
+          <span id="uploadText">Upload File</span>
+          <input type="file" id="fileInput" accept=".docx" hidden />
+        </label>
+      </div>
+      <p id="fileName" class="file-name">No file selected</p>
+      <div>
+        <button id="translateBtn" class="diamond-btn">
+          <span>Translate</span>
+        </button>
+      </div>
+
+      <p id="status" class="status"></p>
+    </section>
+
+    <section id="resultScreen" class="result-screen hidden">
+      <h1 class="title">Translation Completed</h1>
+
+      <a id="downloadLink" class="download-btn">
+        Download the document
+      </a>
+    </section>
+
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

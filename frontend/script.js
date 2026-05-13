@@ -1,37 +1,46 @@
-const fileInput = document.getElementById("fileInput");/*get the file from html*/
-const fileName = document.getElementById("fileName");
+const fileInput = document.getElementById("fileInput");
+const filename = document.getElementById("filename");
 const translateBtn = document.getElementById("translateBtn");
 const statusText = document.getElementById("status");
 const downloadLink = document.getElementById("downloadLink");
 const mainScreen = document.getElementById("mainScreen");
+const loadingScreen = document.getElementById("loadingScreen");
 const resultScreen = document.getElementById("resultScreen");
 const uploadText = document.getElementById("uploadText");
+const newFileBtn = document.getElementById("newFileBtn");
 
 let selectedFile = null;
+
+function showScreen(screen) {
+  mainScreen.classList.add("hidden");
+  loadingScreen.classList.add("hidden");
+  resultScreen.classList.add("hidden");
+
+  screen.classList.remove("hidden");
+}
 
 fileInput.addEventListener("change", () => {
   selectedFile = fileInput.files[0];
 
-  const uploadText = document.getElementById("uploadText");
-
   if (selectedFile) {
     uploadText.textContent = selectedFile.name;
-    fileName.textContent = "Press Translate to translate your docx";
+    filename.textContent = "Press Translate to translate your DOCX";
     statusText.textContent = "";
   } else {
-    uploadText.textContent = "Upload File";
-    fileName.textContent = "No file selected";
+    uploadText.textContent = "Choose DOCX File";
+    filename.textContent = "No file selected";
     statusText.textContent = "";
   }
 });
 
 translateBtn.addEventListener("click", async () => {
   if (!selectedFile) {
-    alert("Please select a DOCX file first.");
+    statusText.textContent = "Please select a DOCX file first.";
     return;
   }
 
-  statusText.textContent = "Translating...";
+  translateBtn.disabled = true;
+  showScreen(loadingScreen);
 
   const formData = new FormData();
   formData.append("file", selectedFile);
@@ -43,7 +52,7 @@ translateBtn.addEventListener("click", async () => {
     });
 
     if (!response.ok) {
-      throw new Error("Translation failed.");
+      throw new Error("Translation failed. Please try again.");
     }
 
     const blob = await response.blob();
@@ -52,11 +61,20 @@ translateBtn.addEventListener("click", async () => {
     downloadLink.href = url;
     downloadLink.download = `translated_${selectedFile.name}`;
 
-    mainScreen.classList.add("hidden");
-    resultScreen.classList.remove("hidden");
-
+    showScreen(resultScreen);
   } catch (error) {
-    statusText.textContent = "Error occurred.";
-    alert(error.message);
+    showScreen(mainScreen);
+    statusText.textContent = error.message;
+  } finally {
+    translateBtn.disabled = false;
   }
+});
+
+newFileBtn.addEventListener("click", () => {
+  selectedFile = null;
+  fileInput.value = "";
+  uploadText.textContent = "Choose DOCX File";
+  filename.textContent = "No file selected";
+  statusText.textContent = "";
+  showScreen(mainScreen);
 });

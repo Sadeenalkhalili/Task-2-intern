@@ -1,14 +1,15 @@
-import shutil
+import shutil#upload file
 from pathlib import Path
-
+#backend web API
+#fastapi Creates the web application/server
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.cors import CORSMiddleware#enable frontend-backend communication
 
 from models import translate_docx_xml
 
 
-app = FastAPI(title="DOCX Translator API")
+app = FastAPI(title="DOCX Translator API")#Create FastAPI app
 
 app.add_middleware(
     CORSMiddleware,

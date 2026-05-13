@@ -5,35 +5,64 @@
   <title>DOCX Translator</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <main class="page">
 
-    <section id="mainScreen" class="panel">
-      <h1 class="title">Docx translator</h1>
-      <p class="subtitle">AR to EN</p>
+    <!-- Upload Screen -->
+    <section id="mainScreen" class="screen">
+      <div class="hero">
+        <div class="hero-text">
+          <h1>Translate DOCX<br>Arabic to English</h1>
+          <p>
+            Upload your Word document and get an English version while preserving
+            the original structure and formatting.
+          </p>
 
-      <div class="actions">
-        <label class="upload-btn">
-          <span id="uploadText">Upload File</span>
-          <input type="file" id="fileInput" accept=".docx" hidden />
-        </label>
-      </div>
-      <p id="fileName" class="file-name">No file selected</p>
-      <div>
-        <button id="translateBtn" class="diamond-btn">
-          <span>Translate</span>
-        </button>
-      </div>
+          <ul>
+            <li>Preserves DOCX XML structure</li>
+            <li>Supports tables, headings, and paragraphs</li>
+            <li>Uses translation API for text only</li>
+          </ul>
+        </div>
 
-      <p id="status" class="status"></p>
+        <div class="upload-card">
+          <div class="doc-icon">DOCX</div>
+
+          <label class="upload-area">
+            <span id="uploadText">Choose DOCX File</span>
+            <input type="file" id="fileInput" accept=".docx" hidden />
+          </label>
+
+          <p id="filename" class="file-name">No file selected</p>
+
+          <button id="translateBtn" class="primary-btn">Translate Document</button>
+
+          <p id="status" class="status"></p>
+        </div>
+      </div>
     </section>
 
-    <section id="resultScreen" class="result-screen hidden">
-      <h1 class="title">Translation Completed</h1>
+    <!-- Translating Screen -->
+    <section id="loadingScreen" class="screen hidden">
+      <div class="loading-card">
+        <div class="spinner"></div>
+        <h1>Translating your document...</h1>
+        <p>Please wait while we translate the text and preserve the DOCX structure.</p>
+      </div>
+    </section>
 
-      <a id="downloadLink" class="download-btn">
-        Download the document
-      </a>
+    <!-- Result Screen -->
+    <section id="resultScreen" class="screen hidden">
+      <div class="result-card">
+        <div class="success-icon">✓</div>
+        <h1>Translation Completed</h1>
+        <p>Your translated document is ready to download.</p>
+
+        <a id="downloadLink" class="download-btn">Download the document</a>
+
+        <button id="newFileBtn" class="secondary-btn">Translate another file</button>
+      </div>
     </section>
 
   </main>

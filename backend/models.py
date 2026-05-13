@@ -9,18 +9,19 @@ from html import escape
 import requests
 from lxml import etree
 
-
+#Unicode ranges that contain Arabic characters
 ARABIC_RE = re.compile(r"[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]")
 
-W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-NSMAP = {"w": W_NS}
+W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"#official Microsoft WordprocessingML namespace URL,the namespaces identify the written things to avoid confusion like title of what 
+#unique identifier(namespaces)
+NSMAP = {"w": W_NS}#this is paragraph,text,etc la kol section with it's specific namespace
 
 
-def has_arabic(text: str) -> bool:
+def has_arabic(text: str) -> bool:#-> is a hint what this func might return
     return bool(text) and bool(ARABIC_RE.search(text))
 
 
-def get_api_key() -> str:
+def get_api_key() -> str:#Gets the DeepL API key from the environment variable
     key = os.environ.get("DEEPL_API_KEY")
     if not key:
         raise RuntimeError("DEEPL_API_KEY is not set.")
@@ -30,13 +31,13 @@ def get_api_key() -> str:
 def get_base_url(use_free_api: bool) -> str:
     return "https://api-free.deepl.com" if use_free_api else "https://api.deepl.com"
 
-
+#Extracts the DOCX file into a temporary folder to unzip it
 def unzip_docx(input_path: str, work_dir: str) -> None:
     with zipfile.ZipFile(input_path, "r") as zip_ref:
         zip_ref.extractall(work_dir)
 
 
-def zip_docx(work_dir: str, output_path: str) -> None:
+def zip_docx(work_dir: str, output_path: str) -> None:#Rebuilds the folder back into a .docx file after modifying the XML
     with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as docx_zip:
         for file_path in Path(work_dir).rglob("*"):
             if file_path.is_file():
@@ -45,8 +46,8 @@ def zip_docx(work_dir: str, output_path: str) -> None:
 
 
 def get_word_xml_files(work_dir: str) -> list[Path]:
-    word_dir = Path(work_dir) / "word"
-
+    word_dir = Path(work_dir) / "word"#where the sys has word
+#search what of these files exist in the docs
     wanted_patterns = [
         "document.xml",
         "header*.xml",
@@ -62,9 +63,9 @@ def get_word_xml_files(work_dir: str) -> list[Path]:
 
     return files
 
-
+#converts word para to xml format with namespaces,structure
 def paragraph_to_deepl_xml(paragraph, paragraph_id: int) -> tuple[str, list]:
-    text_nodes = paragraph.xpath(".//w:t", namespaces=NSMAP)
+    text_nodes = paragraph.xpath(".//w:t", namespaces=NSMAP)#getting each text word
 
     parts = [f'<p id="{paragraph_id}">']
     used_nodes = []
@@ -83,8 +84,10 @@ def paragraph_to_deepl_xml(paragraph, paragraph_id: int) -> tuple[str, list]:
     parts.append("</p>")
 
     return "".join(parts), used_nodes
+#all of it is to prepare it to hand it to deepl
 
 
+#Reads DeepL’s translated XML response and stores it in the dict to replace then
 def parse_translated_deepl_xml(translated_xml: str) -> dict[int, str]:
     root = etree.fromstring(translated_xml.encode("utf-8"))
     result = {}
@@ -109,8 +112,11 @@ class DeepLTextTranslator:
         self.base_url = base_url
         self.target_lang = target_lang
         self.source_lang = source_lang
-        self.cache = {}
+        self.cache = {}#cache avoids translating the exact same XML text more than once
 
+
+#xmlitems input is like the output of paragraph_to_deepl_xml func
+#this is handing the xml texts to deepl and translating them and storing
     def translate_xml_batch(self, xml_items: list[str]) -> list[str]:
         if not xml_items:
             return []
@@ -121,8 +127,8 @@ class DeepLTextTranslator:
             if item in self.cache:
                 translated_results.append(self.cache[item])
                 continue
-
-            payload = {
+#gave it json cause it returns json
+            payload = {#builds the JSON request sent to DeepL
                 "text": [item],
                 "target_lang": self.target_lang,
                 "tag_handling": "xml",
@@ -133,26 +139,26 @@ class DeepLTextTranslator:
             if self.source_lang:
                 payload["source_lang"] = self.source_lang
 
-            headers = {
+            headers = {#HTTP metadata
                 "Authorization": f"DeepL-Auth-Key {self.api_key}",
-                "Content-Type": "application/json",
+                "Content-Type": "application/json",#tells request body is JSON
             }
 
             last_error = None
 
-            for attempt in range(3):
+            for attempt in range(3):#Try request up to 3 times.
                 try:
                     response = requests.post(
-                        f"{self.base_url}/v2/translate",
+                        f"{self.base_url}/v2/translate",#elly hweh free deepl web
                         headers=headers,
                         json=payload,
                         timeout=180,
                     )
 
-                    response.raise_for_status()
-                    data = response.json()
+                    response.raise_for_status()#error 401,400,403
+                    data = response.json()#converts into python dict
 
-                    translated = data["translations"][0]["text"]
+                    translated = data["translations"][0]["text"]#enters dict keywords text to get the word translated
                     self.cache[item] = translated
                     translated_results.append(translated)
                     break
@@ -171,11 +177,11 @@ class DeepLTextTranslator:
 
         return translated_results
 
-
+#returns the number of translated paragraphs
 def translate_xml_file(xml_path: Path, translator: DeepLTextTranslator) -> int:
     parser = etree.XMLParser(remove_blank_text=False, recover=True)
     tree = etree.parse(str(xml_path), parser)
-    root = tree.getroot()
+    root = tree.getroot()#document.xml, the root is usually <w:document>
     remove_manual_page_breaks(root)
 
     paragraphs = root.xpath(".//w:p", namespaces=NSMAP)

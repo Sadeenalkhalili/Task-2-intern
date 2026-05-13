@@ -22,7 +22,7 @@ body {
   justify-content: center;
 }
 
-.hero {
+.intro {
   width: 100%;
   max-width: 1200px;
   display: grid;
@@ -31,33 +31,33 @@ body {
   align-items: center;
 }
 
-.hero-text h1 {
+.intro-text h1 {
   font-size: 64px;
   line-height: 1.05;
   margin: 0 0 25px;
 }
 
-.hero-text p {
+.intro-text p {
   font-size: 22px;
   line-height: 1.5;
   color: #4b5563;
   max-width: 620px;
 }
 
-.hero-text ul {
+.intro-text ul {
   padding: 0;
   margin-top: 35px;
   list-style: none;
 }
 
-.hero-text li {
+.intro-text li {
   font-size: 19px;
   margin: 18px 0;
   color: #2563eb;
   font-weight: 600;
 }
 
-.hero-text li::before {
+.intro-text li::before {
   content: "✓";
   display: inline-flex;
   align-items: center;
@@ -128,7 +128,7 @@ body {
 
 .primary-btn,
 .download-btn,
-.secondary-btn {
+.new-translate {
   border: none;
   border-radius: 14px;
   font-weight: 800;
@@ -208,7 +208,7 @@ body {
   justify-content: center;
 }
 
-.secondary-btn {
+.new-translate {
   margin-top: 18px;
   background: transparent;
   color: #ec0fa9;
@@ -226,6 +226,27 @@ body {
 }
 
 @media (max-width: 900px) {
+  .intro {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  .intro-text h1 {
+    font-size: 46px;
+  }
+
+  .upload-card,
+  .loading-card,
+  .result-card {
+    width: 100%;
+  }
+}
+
+@media (max-width: 900px) {
+  .screen {
+    padding: 40px 20px;
+  }
+
   .hero {
     grid-template-columns: 1fr;
     gap: 40px;
@@ -235,9 +256,45 @@ body {
     font-size: 46px;
   }
 
+  .hero-text p {
+    font-size: 18px;
+  }
+
+  .hero-text li {
+    font-size: 16px;
+  }
+
   .upload-card,
   .loading-card,
   .result-card {
     width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-text h1 {
+    font-size: 36px;
+  }
+
+  .upload-card,
+  .loading-card,
+  .result-card {
+    padding: 28px;
+  }
+
+  .doc-icon {
+    width: 85px;
+    height: 95px;
+  }
+
+  .upload-area {
+    font-size: 18px;
+    min-height: 100px;
+  }
+
+  .primary-btn,
+  .download-btn {
+    font-size: 16px;
+    padding: 16px 18px;
   }
 }

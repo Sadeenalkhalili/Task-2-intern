@@ -24,36 +24,46 @@ body {
 
 .intro {
   width: 100%;
-  max-width: 1200px;
-  display: grid;
-  grid-template-columns: 1fr 430px;
-  gap: 70px;
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  text-align: center;
 }
 
 .intro-text h1 {
-  font-size: 64px;
-  line-height: 1.05;
-  margin: 0 0 25px;
+  font-size: 56px;
+  line-height: 1.1;
+  margin: 0 0 18px;
+}
+
+.intro-text h2 {
+  margin-top: 10px;
+  font-size: 24px;
+  font-weight: 500;
+  color:#ec0fa9;
 }
 
 .intro-text p {
-  font-size: 22px;
+  font-size: 20px;
   line-height: 1.5;
   color: #4b5563;
-  max-width: 620px;
+  max-width: 650px;
+  margin: 0 auto 28px;
 }
 
 .intro-text ul {
-  padding: 0;
-  margin-top: 35px;
   list-style: none;
+  padding: 0;
+  margin-top: 30px;
 }
+
+
 
 .intro-text li {
   font-size: 19px;
   margin: 18px 0;
-  color: #2563eb;
+  color:#111827;
   font-weight: 600;
 }
 
@@ -66,7 +76,7 @@ body {
   height: 26px;
   margin-right: 12px;
   border-radius: 50%;
-  background: #2563eb;
+  background:  #111827;
   color: white;
 }
 
@@ -81,6 +91,8 @@ body {
 }
 
 .upload-card {
+  width: 100%;
+  max-width: 520px;
   min-height: 520px;
 }
 
@@ -225,42 +237,22 @@ body {
   }
 }
 
-@media (max-width: 900px) {
-  .intro {
-    grid-template-columns: 1fr;
-    gap: 40px;
-  }
-
-  .intro-text h1 {
-    font-size: 46px;
-  }
-
-  .upload-card,
-  .loading-card,
-  .result-card {
-    width: 100%;
-  }
-}
 
 @media (max-width: 900px) {
   .screen {
     padding: 40px 20px;
   }
 
-  .hero {
-    grid-template-columns: 1fr;
-    gap: 40px;
-  }
 
-  .hero-text h1 {
+  .intro-text h1 {
     font-size: 46px;
   }
 
-  .hero-text p {
+  .intro-text p {
     font-size: 18px;
   }
 
-  .hero-text li {
+  .intro-text li {
     font-size: 16px;
   }
 
@@ -272,7 +264,7 @@ body {
 }
 
 @media (max-width: 480px) {
-  .hero-text h1 {
+  .intro-text h1 {
     font-size: 36px;
   }
 

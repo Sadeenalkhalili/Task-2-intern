@@ -9,6 +9,7 @@ const resultScreen = document.getElementById("resultScreen");
 const uploadText = document.getElementById("uploadText");
 const newFileBtn = document.getElementById("newFileBtn");
 const dropArea = document.getElementById("dropArea");
+const removeFileBtn = document.getElementById("removeFileBtn");
 
 const API_URL = "https://task-2-intern.onrender.com/translate";
 
@@ -43,21 +44,36 @@ function validateFile(file) {
 }
 
 function handleSelectedFile(file) {
+
   appState.selectedFile = file;
 
-  const error = validateFile(appState.selectedFile);
+  const error = validateFile(file);
 
   if (error) {
     appState.error = error;
-    uploadText.innerHTML = "Drag & drop your DOCX here<br>or click to browse";
+
+    uploadText.innerHTML =
+      "Drag & drop your DOCX here<br>or click to browse";
+
     filename.textContent = error;
+
     statusText.textContent = "";
+
+    removeFileBtn.classList.add("hidden");
+
     return;
   }
 
-  uploadText.textContent = appState.selectedFile.name;
-  filename.textContent = "Press Translate to translate your DOCX";
+  appState.error = null;
+
+  uploadText.textContent = file.name;
+
+  filename.textContent =
+    "Press Translate to translate your DOCX";
+
   statusText.textContent = "";
+
+  removeFileBtn.classList.remove("hidden");
 }
 
 function resetApp() {
@@ -71,13 +87,31 @@ function resetApp() {
   filename.textContent = "No file selected";
   statusText.textContent = "";
   translateBtn.disabled = false;
-
+  removeFileBtn.classList.add("hidden");
   showScreen(mainScreen);
+}
+
+function clearSelectedFile() {
+
+  appState.selectedFile = null;
+
+  fileInput.value = "";
+
+  uploadText.innerHTML =
+    "Drag & drop your DOCX here<br>or click to browse";
+
+  filename.textContent = "No file selected";
+
+  statusText.textContent = "";
+
+  removeFileBtn.classList.add("hidden");
 }
 
 fileInput.addEventListener("change", () => {
   handleSelectedFile(fileInput.files[0]);
 });
+
+removeFileBtn.addEventListener("click", clearSelectedFile);
 
 dropArea.addEventListener("dragover", (event) => {
   event.preventDefault();

@@ -143,6 +143,19 @@ body {
   transform: translateY(-2px);
 }
 
+.remove-file {
+  margin-bottom: 18px;
+  border: none;
+  background: transparent;
+  color: #ef4444;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.remove-file:hover {
+  text-decoration: underline;
+}
+
 .file-name {
   margin: 22px 0;
   color: #6b7280;

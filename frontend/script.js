@@ -10,6 +10,16 @@ const uploadText = document.getElementById("uploadText");
 const newFileBtn = document.getElementById("newFileBtn");
 const dropArea = document.getElementById("dropArea");
 const removeFileBtn = document.getElementById("removeFileBtn");
+const helpBtn = document.getElementById("helpBtn");
+const aboutBtn = document.getElementById("aboutBtn");
+
+helpBtn.addEventListener("click", () => {
+  alert("How to use:\n1. Drag or choose a DOCX file.\n2. Click Translate Document.\n3. Download the translated file.");
+});
+
+aboutBtn.addEventListener("click", () => {
+  alert("DOCX Translator translates Arabic Word documents to English while preserving the XML structure and formatting.");
+});
 
 const API_URL = "https://task-2-intern.onrender.com/translate";
 

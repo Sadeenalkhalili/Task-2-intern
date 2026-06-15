@@ -9,7 +9,7 @@ const resultScreen = document.getElementById("resultScreen");
 const uploadText = document.getElementById("uploadText");
 const newFileBtn = document.getElementById("newFileBtn");
 
-const API_URL = "http://127.0.0.1:8000/translate";
+const API_URL = "https://task-2-intern.onrender.com/translate";
 
 const appState = {
   selectedFile: null,

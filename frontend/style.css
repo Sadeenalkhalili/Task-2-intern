@@ -340,6 +340,34 @@ body {
 }
 
 @media (max-width: 480px) {
+
+  .navbar {
+    height: 60px;
+    padding: 0 16px;
+  }
+
+  .brand {
+    font-size: 16px;
+  }
+
+  .brand-icon {
+    font-size: 20px;
+  }
+
+  .nav-links {
+    gap: 10px;
+  }
+
+  .nav-btn {
+    font-size: 14px;
+  }
+
+  .screen {
+    padding-top: 90px;
+  }
+}
+
+@media (max-width: 480px) {
   .intro-text h1 {
     font-size: 36px;
   }

@@ -137,6 +137,12 @@ body {
   transform: translateY(-2px);
 }
 
+.upload-area.drag-over {
+  background: #ffe7f7;
+  border-color: #d80d99;
+  transform: translateY(-2px);
+}
+
 .file-name {
   margin: 22px 0;
   color: #6b7280;

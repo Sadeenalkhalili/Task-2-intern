@@ -8,6 +8,7 @@ const loadingScreen = document.getElementById("loadingScreen");
 const resultScreen = document.getElementById("resultScreen");
 const uploadText = document.getElementById("uploadText");
 const newFileBtn = document.getElementById("newFileBtn");
+const dropArea = document.getElementById("dropArea");
 
 const API_URL = "https://task-2-intern.onrender.com/translate";
 
@@ -41,29 +42,14 @@ function validateFile(file) {
   return null;
 }
 
-function resetApp() {
-  appState.selectedFile = null;
-  appState.isTranslating = false;
-  appState.error = null;
-  appState.downloadUrl = null;
-
-  fileInput.value = "";
-  uploadText.textContent = "Choose DOCX File";
-  filename.textContent = "No file selected";
-  statusText.textContent = "";
-  translateBtn.disabled = false;
-
-  showScreen(mainScreen);
-}
-
-fileInput.addEventListener("change", () => {
-  appState.selectedFile = fileInput.files[0];
+function handleSelectedFile(file) {
+  appState.selectedFile = file;
 
   const error = validateFile(appState.selectedFile);
 
   if (error) {
     appState.error = error;
-    uploadText.textContent = "Choose DOCX File";
+    uploadText.innerHTML = "Drag & drop your DOCX here<br>or click to browse";
     filename.textContent = error;
     statusText.textContent = "";
     return;
@@ -72,6 +58,42 @@ fileInput.addEventListener("change", () => {
   uploadText.textContent = appState.selectedFile.name;
   filename.textContent = "Press Translate to translate your DOCX";
   statusText.textContent = "";
+}
+
+function resetApp() {
+  appState.selectedFile = null;
+  appState.isTranslating = false;
+  appState.error = null;
+  appState.downloadUrl = null;
+
+  fileInput.value = "";
+  uploadText.innerHTML = "Drag & drop your DOCX here<br>or click to browse";
+  filename.textContent = "No file selected";
+  statusText.textContent = "";
+  translateBtn.disabled = false;
+
+  showScreen(mainScreen);
+}
+
+fileInput.addEventListener("change", () => {
+  handleSelectedFile(fileInput.files[0]);
+});
+
+dropArea.addEventListener("dragover", (event) => {
+  event.preventDefault();
+  dropArea.classList.add("drag-over");
+});
+
+dropArea.addEventListener("dragleave", () => {
+  dropArea.classList.remove("drag-over");
+});
+
+dropArea.addEventListener("drop", (event) => {
+  event.preventDefault();
+  dropArea.classList.remove("drag-over");
+
+  const droppedFile = event.dataTransfer.files[0];
+  handleSelectedFile(droppedFile);
 });
 
 translateBtn.addEventListener("click", async () => {

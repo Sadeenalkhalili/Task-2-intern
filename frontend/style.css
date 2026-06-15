@@ -124,6 +124,12 @@ body {
   cursor: pointer;
   background: #fff5fb;
   transition: 0.2s ease;
+  outline: none;
+  user-select: none;
+}
+
+.upload-area span {
+  user-select: none;
 }
 
 .upload-area:hover {

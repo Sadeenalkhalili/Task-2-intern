@@ -39,15 +39,15 @@ function showScreen(screen) {
 
 function validateFile(file) {
   if (!file) {
-    return "Please select a DOCX file first.";
+    return "Please select a DOCX file first";
   }
 
   if (!file.name.toLowerCase().endsWith(".docx")) {
-    return "Only DOCX files are allowed.";
+    return "!!Only DOCX files are allowed!!";
   }
 
   if (file.size > 10 * 1024 * 1024) {
-    return "File must be less than 10MB.";
+    return "!!File must be less than 10MB!!";
   }
 
   return null;

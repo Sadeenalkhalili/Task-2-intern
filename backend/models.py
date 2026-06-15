@@ -8,7 +8,8 @@ from html import escape
 
 import requests
 from lxml import etree
-
+from dotenv import load_dotenv
+load_dotenv()
 #Unicode ranges that contain Arabic characters
 ARABIC_RE = re.compile(r"[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]")
 
